@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アルティメット・モミール・シミュレーター</title>
+    <style>
+        :root {
+            /* デフォルト (クラシック) */
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --bg-color: #f4f7f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --subtext-color: #666666;
+            --border-color: #e9ecef;
+            --light-bg: #f8f9fa;
+            --btn-overlay: 0, 123, 255;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+        
+        .app-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            max-width: 1200px; 
+            margin: 0 auto;
+        }
+        @media (max-width: 900px) {
+            .app-wrapper { flex-direction: column; align-items: stretch; }
+        }
+
+        .container {
+            flex-grow: 1;
+            text-align: center;
+            background-color: var(--card-bg);
+            padding: 20px 30px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px var(--shadow-color);
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            transition: background-color 0.4s ease, border-color 0.4s ease;
+        }
+        
+        h1 { margin-top: 0; color: var(--text-color); font-size: 1.8rem;}
+        
+        .control-group { 
+            display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px; flex-wrap: wrap;
+            background: var(--light-bg); padding: 20px; border-radius: 8px; border: 2px solid var(--border-color);
+            transition: background-color 0.4s ease, border-color 0.4s ease;
+        }
+        
+        input[type="number"], select {
+            padding: 10px; font-size: 16px; 
+            border: 2px solid var(--border-color);
+            border-radius: 5px; text-align: center; 
+            background: var(--card-bg); color: var(--text-color);
+            font-weight: bold;
+        }
+        input[type="number"] { width: 70px; }
+        select { cursor: pointer; }
+        
+        #generate-button {
+            padding: 12px 25px;
+            font-size: 18px;
+            cursor: pointer;
+            background: linear-gradient(rgba(var(--btn-overlay), 0.85), rgba(var(--btn-overlay), 0.85)), url('https://cards.scryfall.io/art_crop/front/8/8/88f342ec-a09c-4ec8-bca4-dccf7d0ea622.jpg');
+            background-size: cover;
+            background-position: center 20%;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 6px var(--shadow-color);
+        }
+        #generate-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px var(--shadow-color);
+            filter: brightness(1.1);
+        }
+        #generate-button:disabled {
+            background: var(--border-color);
+            color: var(--subtext-color);
+            text-shadow: none;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+            filter: grayscale(1);
+        }
+        
+        .color-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-color);
+            margin: 20px 0 10px;
+            padding-bottom: 5px;
+        }
+        .options-title { font-weight: bold; color: var(--text-color); margin: 0; }
+        
+        #color-logic-select {
+            font-size: 0.9rem;
+            padding: 4px 8px;
+            margin-left: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .options-section-title { margin: 20px 0 10px; font-weight: bold; color: var(--text-color); text-align: left; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px;}
+
+        .color-options { 
+            background-color: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); 
+            transition: background-color 0.4s ease;
+        }
+        .color-checkboxes { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        .color-checkboxes label { display: flex; align-items: center; cursor: pointer; color: var(--text-color); font-weight: 500;}
+        .color-checkboxes input { margin-right: 5px; }
+        
+        #open-settings-btn { 
+            background-color: var(--primary-color); 
+            margin-top: 10px; width: 100%; color: white; padding: 10px; border:none; border-radius: 5px; cursor: pointer;
+            opacity: 0.8; transition: opacity 0.2s;
+        }
+        #open-settings-btn:hover { opacity: 1; }
+        #current-scope { font-style: italic; color: var(--subtext-color); margin-top: 10px; min-height: 20px; font-size: 0.9rem;}
+
+        #result { 
+            margin-top: 20px; min-height: 380px; display: flex; justify-content: center; align-items: center; flex-direction: column; 
+            background: var(--bg-color); border-radius: 10px; padding: 15px; border: 1px solid var(--border-color);
+            transition: background-color 0.4s ease;
+        }
+        #card-image { max-width: 80%; max-height: 400px; width: auto; border-radius: 15px; box-shadow: 0 4px 15px var(--shadow-color); transition: transform 0.2s; }
+        #message { color: var(--text-color); font-size: 18px; padding: 20px; font-weight: bold;}
+        #loading-spinner { display: none; font-size: 20px; color: var(--primary-color); margin-bottom: 10px; font-weight: bold;}
+
+        #pick-container {
+            display: none; gap: 20px; justify-content: center; flex-wrap: wrap; width: 100%;
+        }
+        .pick-image {
+            width: 30%; min-width: 180px; max-width: 300px;
+            height: auto; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 4px 10px var(--shadow-color); transition: transform 0.2s, box-shadow 0.2s; border: 4px solid transparent;
+        }
+        .pick-image:hover {
+            transform: translateY(-8px); box-shadow: 0 12px 25px rgba(var(--btn-overlay), 0.5); border-color: var(--primary-color); z-index: 10;
+        }
+
+        .history-container {
+            width: 340px; background: var(--card-bg); padding: 20px; border-radius: 12px;
+            box-shadow: 0 6px 12px var(--shadow-color); max-height: 85vh; overflow-y: auto; flex-shrink: 0; box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            transition: background-color 0.4s ease;
+        }
+        @media (max-width: 900px) {
+            .history-container { width: 100%; max-height: 400px; }
+        }
+        .history-title {
+            margin-top: 0; font-size: 1.2rem; color: var(--text-color);
+            border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 10px;
+        }
+        .history-mode-info { font-size: 0.8rem; color: var(--subtext-color); margin-bottom: 15px; font-style: italic;}
+        .history-list { display: flex; flex-direction: column; gap: 10px; }
+        .history-item {
+            display: flex; align-items: center; gap: 15px;
+            background: var(--light-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);
+            cursor: zoom-in; transition: background-color 0.2s;
+        }
+        .history-item:hover {
+            background-color: var(--bg-color);
+            border-color: var(--primary-color);
+        }
+        .history-item img { width: 60px; border-radius: 4px; box-shadow: 0 2px 5px var(--shadow-color); pointer-events: none;}
+        .history-item-info { font-size: 0.9rem; color: var(--subtext-color); line-height: 1.4; text-align: left; pointer-events: none;}
+        .history-item-info strong { display: block; color: var(--text-color); margin-bottom: 3px; }
+
+        #preview-overlay {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 1000; pointer-events: none; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6));
+        }
+        #preview-overlay img { max-height: 80vh; max-width: 90vw; border-radius: 15px; }
+
+        dialog { 
+            width: 90%; max-width: 800px; border-radius: 10px; border: 2px solid var(--primary-color); box-shadow: 0 10px 40px rgba(0,0,0,0.5); padding: 0; 
+            background: var(--card-bg); color: var(--text-color);
+        }
+        dialog::backdrop { background-color: rgba(0,0,0,0.7); }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--light-bg);}
+        .modal-header h2 { margin: 0; font-size: 1.5rem; }
+        .modal-header .close-btn { font-size: 28px; cursor: pointer; background: none; border: none; color: var(--subtext-color); padding: 0 10px; line-height: 1;}
+        .modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); text-align: right; background: var(--light-bg);}
+        
+        .format-buttons { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px;}
+        .format-buttons button, .expansion-controls button { 
+            background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 8px 15px; cursor: pointer; border-radius: 4px; font-weight: bold;
+        }
+        .format-buttons button:hover, .expansion-controls button:hover { border-color: var(--primary-color); }
+        .format-buttons button.active { background-color: var(--primary-color); color: white; border-color: var(--primary-hover); }
+        .expansion-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 10px;}
+        .expansion-controls p { margin: 0; font-weight: bold;}
+        
+        #expansion-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 15px; padding-top: 10px; }
+        .expansion-symbol {
+            cursor: pointer; transition: filter 0.2s ease, transform 0.1s ease; 
+            filter: grayscale(1) opacity(0.3); display: flex; justify-content: center; align-items: center; height: 40px;
+        }
+        .expansion-symbol:hover { transform: scale(1.1); }
+        .expansion-symbol.selected { filter: none; opacity: 1; }
+        .expansion-symbol img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; vertical-align: middle; }
+        #set-loader { font-size: 1.2em; grid-column: 1 / -1; text-align: center; padding: 20px;}
+        
+        .theme-selector-container { 
+            margin-bottom: 20px; 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .theme-selector-container label { font-weight: bold; color: var(--text-color); }
+        #guild-icons { display: flex; gap: 5px; align-items: center; height: 38px;}
+        #guild-icons img { width: 20px; height: 20px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2)); }
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <div class="container">
+            <div class="theme-selector-container">
+                <label for="theme-select">カラーテーマ:</label>
+                <div id="guild-icons"></div>
+                <select id="theme-select">
+                    <option value="classic">クラシック (デフォルト)</option>
+                    <optgroup label="ラヴニカのギルド (2色)">
+                        <option value="azorius">アゾリウス (白/青)</option>
+                        <option value="orzhov">オルゾフ (白/黒)</option>
+                        <option value="boros">ボロス (赤/白)</option>
+                        <option value="selesnya">セレズニア (緑/白)</option>
+                        <option value="dimir">ディミーア (青/黒)</option>
+                        <option value="izzet">イゼット (青/赤)</option>
+                        <option value="rakdos">ラクドス (黒/赤)</option>
+                        <option value="golgari">ゴルガリ (黒/緑)</option>
+                        <option value="gruul">グルール (赤/緑)</option>
+                        <option value="simic">シミック (緑/青)</option>
+                    </optgroup>
+                    <optgroup label="アラーラの断片 (3色)">
+                        <option value="bant">バント (緑/白/青)</option>
+                        <option value="esper">エスパー (白/青/黒)</option>
+                        <option value="grixis">グリクシス (青/黒/赤)</option>
+                        <option value="jund">ジャンド (黒/赤/緑)</option>
+                        <option value="naya">ナヤ (赤/緑/白)</option>
+                    </optgroup>
+                    <optgroup label="タルキールの氏族 (3色)">
+                        <option value="abzan">アブザン (白/黒/緑)</option>
+                        <option value="jeskai">ジェスカイ (青/赤/白)</option>
+                        <option value="sultai">スゥルタイ (黒/緑/青)</option>
+                        <option value="mardu">マルドゥ (赤/白/黒)</option>
+                        <option value="temur">ティムール (緑/青/赤)</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <h1>モミール・ジェネレーター</h1>
+            
+            <div class="options">
+                <div class="options-section-title">エキスパンションの絞り込み</div>
+                <button id="open-settings-btn" disabled>読み込み中...</button>
+                <div id="current-scope">現在: 全セット（レガシー）</div>
+
+                <!-- Color Header with Logic Selection -->
+                <div class="color-header">
+                    <div class="options-title">色の絞り込み</div>
+                    <div>
+                        <select id="color-logic-select">
+                            <option value="or">を含む (OR)</option>
+                            <option value="subset">の範囲内 (Only)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="color-options">
+                    <div class="color-checkboxes">
+                        <label><input type="checkbox" name="color" value="w"> 白</label>
+                        <label><input type="checkbox" name="color" value="u"> 青</label>
+                        <label><input type="checkbox" name="color" value="b"> 黒</label>
+                        <label><input type="checkbox" name="color" value="r"> 赤</label>
+                        <label><input type="checkbox" name="color" value="g"> 緑</label>
+                        <label><input type="checkbox" name="color" value="c"> 無色</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div>
+                    <label for="mode-select" style="font-weight: bold; color: var(--text-color);">モード:</label>
+                    <select id="mode-select">
+                        <option value="normal">ノーマル (重複あり)</option>
+                        <option value="3pick">3pick (3択から選ぶ)</option>
+                        <option value="cube">キューブ (重複なし)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="lang-select" style="font-weight: bold; color: var(--text-color);">言語:</label>
+                    <select id="lang-select">
+                        <option value="en">英語</option>
+                        <option value="ja">日本語</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="mana-cost" style="font-weight: bold; color: var(--text-color);">マナ(X):</label>
+                    <input type="number" id="mana-cost" value="1" min="0" max="16">
+                </div>
+                
+                <button id="generate-button" disabled>準備中...</button>
+            </div>
+
+            <div id="result">
+                <div id="loading-spinner">召喚中...</div>
+                <div id="message">マナ・コストとモードを選んで起動！</div>
+                
+                <img id="card-image" src="" alt="ランダムなクリーチャー" style="display: none;">
+                <div id="pick-container"></div>
+            </div>
+        </div>
+
+        <div class="history-container">
+            <h3 class="history-title">戦場 (生成履歴)</h3>
+            <div id="history-mode-info" class="history-mode-info">※ノーマルモード: カードの重複除外は行われません。</div>
+            <div class="history-list" id="history-list">
+                <p style="color: var(--subtext-color); font-size: 0.9rem;">まだ戦場には誰もいません。選ばれたクリーチャーはここに追加されます。</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="preview-overlay">
+        <img id="preview-image" src="" alt="preview">
+    </div>
+
+    <dialog id="expansion-dialog">
+        <div class="modal-header">
+            <h2>エキスパンション設定</h2>
+            <button class="close-btn" title="閉じる">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="format-buttons">
+                <button data-format="standard">スタンダード</button>
+                <button data-format="pioneer">パイオニア</button>
+                <button data-format="modern">モダン</button>
+                <button data-format="legacy" class="active">レガシー (全セット)</button>
+            </div>
+            <hr style="border-top: 1px solid var(--border-color); margin: 20px 0;">
+            <div class="expansion-controls">
+                <p>個別セットのオン / オフ</p>
+                <button id="clear-sets-btn">すべてオフにする</button>
+            </div>
+            <div id="expansion-list">
+                <div id="set-loader">情報を読み込み中...</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="apply-settings-btn" style="background-color: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">設定を確定して閉じる</button>
+        </div>
+    </dialog>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const themeSelect = document.getElementById('theme-select');
+        const colorLogicSelect = document.getElementById('color-logic-select');
+        const guildIconsContainer = document.getElementById('guild-icons');
+
+        // Guild & Shard & Clan Themes
+        const guildThemes = {
+            classic: { 
+                '--primary-color': '#007bff', '--primary-hover': '#0056b3', '--bg-color': '#f4f7f9',
+                '--card-bg': '#ffffff', '--text-color': '#333333', '--subtext-color': '#666666',
+                '--border-color': '#e9ecef', '--light-bg': '#f8f9fa', '--btn-overlay': '0, 123, 255',
+                '--shadow-color': 'rgba(0,0,0,0.1)'
+            },
+            azorius: {
+                '--primary-color': '#2a51a3', '--primary-hover': '#1e3b7a', '--bg-color': '#d0e8ff',
+                '--card-bg': '#fffbef', '--text-color': '#162e5c', '--subtext-color': '#5d6e8c',
+                '--border-color': '#a3c2e0', '--light-bg': '#e6f2ff', '--btn-overlay': '42, 81, 163',
+                '--shadow-color': 'rgba(42, 81, 163, 0.2)'
+            },
+            orzhov: {
+                '--primary-color': '#333333', '--primary-hover': '#000000', '--bg-color': '#d6d6d6',
+                '--card-bg': '#fffbef', '--text-color': '#1a1a1a', '--subtext-color': '#555555',
+                '--border-color': '#999999', '--light-bg': '#ececec', '--btn-overlay': '51, 51, 51',
+                '--shadow-color': 'rgba(0,0,0,0.2)'
+            },
+            boros: {
+                '--primary-color': '#d32f2f', '--primary-hover': '#b71c1c', '--bg-color': '#ffdede',
+                '--card-bg': '#fffbef', '--text-color': '#5e0a0a', '--subtext-color': '#a64d4d',
+                '--border-color': '#ffb3b3', '--light-bg': '#ffebee', '--btn-overlay': '211, 47, 47',
+                '--shadow-color': 'rgba(211, 47, 47, 0.2)'
+            },
+            selesnya: {
+                '--primary-color': '#5fab56', '--primary-hover': '#4a8743', '--bg-color': '#dcedc8',
+                '--card-bg': '#fffbef', '--text-color': '#1b3b1b', '--subtext-color': '#558b2f',
+                '--border-color': '#aed581', '--light-bg': '#f1f8e9', '--btn-overlay': '95, 171, 86',
+                '--shadow-color': 'rgba(95, 171, 86, 0.2)'
+            },
+            dimir: {
+                '--primary-color': '#3b5a75', '--primary-hover': '#5c7c99', '--bg-color': '#1a2634',
+                '--card-bg': '#2d3748', '--text-color': '#e2e8f0', '--subtext-color': '#a0aec0',
+                '--border-color': '#4a5568', '--light-bg': '#1e293b', '--btn-overlay': '59, 90, 117',
+                '--shadow-color': 'rgba(0,0,0,0.4)'
+            },
+            izzet: {
+                '--primary-color': '#e63636', '--primary-hover': '#ff5252', '--bg-color': '#ffebee',
+                '--card-bg': '#e0f7fa', '--text-color': '#3e2723', '--subtext-color': '#5d4037',
+                '--border-color': '#ffcdd2', '--light-bg': '#fff8e1', '--btn-overlay': '230, 54, 54',
+                '--shadow-color': 'rgba(230, 54, 54, 0.2)'
+            },
+            rakdos: {
+                '--primary-color': '#b32025', '--primary-hover': '#e53935', '--bg-color': '#2b1b1b',
+                '--card-bg': '#4e342e', '--text-color': '#ffebee', '--subtext-color': '#ef9a9a',
+                '--border-color': '#8d6e63', '--light-bg': '#3e2723', '--btn-overlay': '179, 32, 37',
+                '--shadow-color': 'rgba(0,0,0,0.5)'
+            },
+            golgari: {
+                '--primary-color': '#6e9c46', '--primary-hover': '#8bc34a', '--bg-color': '#1b261b',
+                '--card-bg': '#33691e', '--text-color': '#f1f8e9', '--subtext-color': '#c5e1a5',
+                '--border-color': '#558b2f', '--light-bg': '#2e3b2e', '--btn-overlay': '110, 156, 70',
+                '--shadow-color': 'rgba(0,0,0,0.4)'
+            },
+            gruul: {
+                '--primary-color': '#d32f2f', '--primary-hover': '#b71c1c', 
+                '--bg-color': '#f9fbe7', '--card-bg': '#fffde7', 
+                '--text-color': '#33691e', '--subtext-color': '#bf360c', 
+                '--border-color': '#7cb342', '--light-bg': '#f1f8e9', 
+                '--btn-overlay': '211, 47, 47', '--shadow-color': 'rgba(124, 179, 66, 0.3)'
+            },
+            simic: {
+                '--primary-color': '#00a99d', '--primary-hover': '#26a69a', '--bg-color': '#e0f7fa',
+                '--card-bg': '#f1f8e9', '--text-color': '#004d40', '--subtext-color': '#00897b',
+                '--border-color': '#b2dfdb', '--light-bg': '#e0f2f1', '--btn-overlay': '0, 169, 157',
+                '--shadow-color': 'rgba(0, 169, 157, 0.2)'
+            },
+            bant: { 
+                '--primary-color': '#2e8b57', '--primary-hover': '#1e5f3a', '--bg-color': '#f0fff0',
+                '--card-bg': '#fffff0', '--text-color': '#1b4d3e', '--subtext-color': '#4682b4',
+                '--border-color': '#ffd700', '--light-bg': '#e0ffff', '--btn-overlay': '46, 139, 87',
+                '--shadow-color': 'rgba(46, 139, 87, 0.2)'
+            },
+            esper: { 
+                '--primary-color': '#483d8b', '--primary-hover': '#2f275e', '--bg-color': '#f0f8ff',
+                '--card-bg': '#e6e6fa', '--text-color': '#2f4f4f', '--subtext-color': '#708090',
+                '--border-color': '#c0c0c0', '--light-bg': '#f5f5f5', '--btn-overlay': '72, 61, 139',
+                '--shadow-color': 'rgba(72, 61, 139, 0.2)'
+            },
+            grixis: { 
+                '--primary-color': '#800000', '--primary-hover': '#5e0000', '--bg-color': '#111',
+                '--card-bg': '#2b1b1b', '--text-color': '#f0f8ff', '--subtext-color': '#b0c4de',
+                '--border-color': '#4b0082', '--light-bg': '#1a1a1a', '--btn-overlay': '128, 0, 0',
+                '--shadow-color': 'rgba(128, 0, 0, 0.4)'
+            },
+            jund: { 
+                '--primary-color': '#556b2f', '--primary-hover': '#3b4b20', '--bg-color': '#fff8dc',
+                '--card-bg': '#deb887', '--text-color': '#3e2723', '--subtext-color': '#8b0000',
+                '--border-color': '#8b4513', '--light-bg': '#faebd7', '--btn-overlay': '85, 107, 47',
+                '--shadow-color': 'rgba(85, 107, 47, 0.3)'
+            },
+            naya: { 
+                '--primary-color': '#228b22', '--primary-hover': '#155715', '--bg-color': '#ffffe0',
+                '--card-bg': '#fffaf0', '--text-color': '#2e8b57', '--subtext-color': '#ff4500',
+                '--border-color': '#daa520', '--light-bg': '#f5deb3', '--btn-overlay': '34, 139, 34',
+                '--shadow-color': 'rgba(34, 139, 34, 0.2)'
+            },
+            abzan: { 
+                '--primary-color': '#8b4513', '--primary-hover': '#5e2f0d', '--bg-color': '#faf0e6',
+                '--card-bg': '#f5f5dc', '--text-color': '#2f4f4f', '--subtext-color': '#556b2f',
+                '--border-color': '#d2b48c', '--light-bg': '#fff8dc', '--btn-overlay': '139, 69, 19',
+                '--shadow-color': 'rgba(139, 69, 19, 0.2)'
+            },
+            jeskai: { 
+                '--primary-color': '#0000cd', '--primary-hover': '#00008b', '--bg-color': '#f0ffff',
+                '--card-bg': '#fffafa', '--text-color': '#b22222', '--subtext-color': '#1e90ff',
+                '--border-color': '#dc143c', '--light-bg': '#e6e6fa', '--btn-overlay': '0, 0, 205',
+                '--shadow-color': 'rgba(0, 0, 205, 0.2)'
+            },
+            sultai: { 
+                '--primary-color': '#2f4f4f', '--primary-hover': '#1c2f2f', '--bg-color': '#f0fff0',
+                '--card-bg': '#e0ffff', '--text-color': '#006400', '--subtext-color': '#483d8b',
+                '--border-color': '#8fbc8f', '--light-bg': '#f5fffa', '--btn-overlay': '47, 79, 79',
+                '--shadow-color': 'rgba(47, 79, 79, 0.3)'
+            },
+            mardu: { 
+                '--primary-color': '#800000', '--primary-hover': '#5a0000', '--bg-color': '#fff5ee',
+                '--card-bg': '#f0f0f0', '--text-color': '#000000', '--subtext-color': '#a52a2a',
+                '--border-color': '#696969', '--light-bg': '#d3d3d3', '--btn-overlay': '128, 0, 0',
+                '--shadow-color': 'rgba(128, 0, 0, 0.3)'
+            },
+            temur: { 
+                '--primary-color': '#008b8b', '--primary-hover': '#006666', '--bg-color': '#f0ffff',
+                '--card-bg': '#e0ffff', '--text-color': '#b22222', '--subtext-color': '#228b22',
+                '--border-color': '#4682b4', '--light-bg': '#afeeee', '--btn-overlay': '0, 139, 139',
+                '--shadow-color': 'rgba(0, 139, 139, 0.2)'
+            }
+        };
+
+        const guildSymbolMap = {
+            classic: [],
+            azorius: ['W', 'U'], orzhov: ['W', 'B'], boros: ['R', 'W'], selesnya: ['G', 'W'],
+            dimir: ['U', 'B'], izzet: ['U', 'R'], rakdos: ['B', 'R'], golgari: ['B', 'G'],
+            gruul: ['R', 'G'], simic: ['G', 'U'],
+            bant: ['G', 'W', 'U'], esper: ['W', 'U', 'B'], grixis: ['U', 'B', 'R'],
+            jund: ['B', 'R', 'G'], naya: ['R', 'G', 'W'],
+            abzan: ['W', 'B', 'G'], jeskai: ['U', 'R', 'W'], sultai: ['B', 'G', 'U'],
+            mardu: ['R', 'W', 'B'], temur: ['G', 'U', 'R']
+        };
+
+        const updateTheme = (val) => {
+            const theme = guildThemes[val];
+            if (theme) {
+                for (const [key, value] of Object.entries(theme)) {
+                    document.documentElement.style.setProperty(key, value);
+                }
+            }
+            const symbols = guildSymbolMap[val];
+            if (symbols && symbols.length > 0) {
+                guildIconsContainer.innerHTML = symbols.map(sym => 
+                    `<img src="https://svgs.scryfall.io/card-symbols/${sym}.svg" alt="${sym}">`
+                ).join('');
+            } else {
+                guildIconsContainer.innerHTML = '';
+            }
+        };
+
+        themeSelect.addEventListener('change', (e) => {
+            updateTheme(e.target.value);
+        });
+
+
+        const generateButton = document.getElementById('generate-button');
+        const manaCostInput = document.getElementById('mana-cost');
+        const modeSelect = document.getElementById('mode-select');
+        const langSelect = document.getElementById('lang-select');
+        const colorCheckboxes = document.querySelectorAll('input[name="color"]');
+        
+        const cardImage = document.getElementById('card-image');
+        const pickContainer = document.getElementById('pick-container');
+        const messageDiv = document.getElementById('message');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        
+        const historyListDiv = document.getElementById('history-list');
+        const historyModeInfo = document.getElementById('history-mode-info');
+        const currentScopeDiv = document.getElementById('current-scope');
+
+        const previewOverlay = document.getElementById('preview-overlay');
+        const previewImage = document.getElementById('preview-image');
+
+        const dialog = document.getElementById('expansion-dialog');
+        const openSettingsBtn = document.getElementById('open-settings-btn');
+        const closeBtn = dialog.querySelector('.close-btn');
+        const applySettingsBtn = document.getElementById('apply-settings-btn');
+        const expansionListDiv = document.getElementById('expansion-list');
+        const formatButtons = dialog.querySelectorAll('.format-buttons button');
+        const clearSetsBtn = document.getElementById('clear-sets-btn');
+
+        let allSetsData = [];
+        let selectedSets = new Set();
+        let tempSelectedSets = new Set();
+        let historyCards = [];
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        modeSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'cube') {
+                historyModeInfo.textContent = '※キューブモード: 履歴にあるカードは次回の検索から除外され、重複しません。';
+                historyModeInfo.style.color = '#dc3545';
+            } else if (e.target.value === '3pick') {
+                historyModeInfo.textContent = '※3pickモード: 提示された選択肢から選んだ1枚が戦場に出ます。';
+                historyModeInfo.style.color = 'var(--subtext-color)';
+            } else {
+                historyModeInfo.textContent = '※ノーマルモード: カードの重複除外は行われません。';
+                historyModeInfo.style.color = 'var(--subtext-color)';
+            }
+
+            historyCards = [];
+            historyListDiv.innerHTML = '<p style="color: #dc3545; font-size: 0.9rem; font-weight: bold;">モードが変更されたため、戦場がリセットされました。</p>';
+            
+            cardImage.style.display = 'none';
+            pickContainer.style.display = 'none';
+            messageDiv.textContent = 'マナ・コストとモードを選んで起動！';
+            messageDiv.style.display = 'block';
+        });
+
+        const isLegacy = () => true;
+        const isModern = (set) => {
+            if (['core', 'expansion'].includes(set.set_type)) return new Date(set.released_at) >= new Date('2003-07-28');
+            if (['mh1', 'mh2', 'mh3', 'ltr'].includes(set.code)) return true;
+            return false;
+        };
+        const isPioneer = (set) => {
+            if (['core', 'expansion'].includes(set.set_type)) return new Date(set.released_at) >= new Date('2012-10-05');
+            return false;
+        };
+        const isStandard = (set) => {
+            if (['core', 'expansion'].includes(set.set_type)) return new Date(set.released_at) >= new Date('2021-09-01');
+            return false;
+        };
+
+        const fetchAllSets = async () => {
+            try {
+                const response = await fetch('https://api.scryfall.com/sets');
+                const data = await response.json();
+                allSetsData = data.data.filter(set => ['core', 'expansion', 'masters', 'draft_innovation'].includes(set.set_type) && set.digital === false);
+                
+                expansionListDiv.innerHTML = '';
+                allSetsData.forEach(set => {
+                    const symbolEl = document.createElement('div');
+                    symbolEl.className = 'expansion-symbol';
+                    symbolEl.dataset.setCode = set.code;
+                    symbolEl.title = `${set.name} (${set.code.toUpperCase()})`;
+                    const img = document.createElement('img');
+                    img.src = set.icon_svg_uri; img.alt = set.code;
+                    symbolEl.appendChild(img);
+                    symbolEl.addEventListener('click', () => { toggleSetSelection(set.code); updateFormatButtonsState(); });
+                    expansionListDiv.appendChild(symbolEl);
+                });
+                selectAllSetsByFormat('legacy');
+                applySettings();
+                openSettingsBtn.disabled = false; openSettingsBtn.textContent = 'エキスパンション設定を開く';
+                generateButton.disabled = false; generateButton.textContent = 'モミール起動！';
+            } catch (error) {
+                expansionListDiv.innerHTML = 'エラー：読み込み失敗';
+            }
+        };
+        fetchAllSets();
+
+        function selectAllSetsByFormat(format) {
+            tempSelectedSets.clear();
+            allSetsData.forEach(set => {
+                if ((format === 'legacy' && isLegacy()) || (format === 'modern' && isModern(set)) || 
+                    (format === 'pioneer' && isPioneer(set)) || (format === 'standard' && isStandard(set))) {
+                    tempSelectedSets.add(set.code);
+                }
+            });
+            updateSymbolSelectionUI();
+        }
+        function toggleSetSelection(setCode) { tempSelectedSets.has(setCode) ? tempSelectedSets.delete(setCode) : tempSelectedSets.add(setCode); updateSymbolSelectionUI(); }
+        function updateSymbolSelectionUI() { expansionListDiv.querySelectorAll('.expansion-symbol').forEach(el => { tempSelectedSets.has(el.dataset.setCode) ? el.classList.add('selected') : el.classList.remove('selected'); }); }
+        function updateFormatButtonsState() { formatButtons.forEach(btn => btn.classList.remove('active')); }
+        formatButtons.forEach(button => { button.addEventListener('click', () => { updateFormatButtonsState(); button.classList.add('active'); selectAllSetsByFormat(button.dataset.format); }); });
+        clearSetsBtn.addEventListener('click', () => { tempSelectedSets.clear(); updateFormatButtonsState(); updateSymbolSelectionUI(); });
+        openSettingsBtn.addEventListener('click', () => { tempSelectedSets = new Set(selectedSets); updateSymbolSelectionUI(); dialog.showModal(); });
+        closeBtn.addEventListener('click', () => dialog.close());
+        function applySettings() {
+            selectedSets = new Set(tempSelectedSets);
+            currentScopeDiv.textContent = selectedSets.size === allSetsData.length ? `現在: 全セット（レガシー）` : (selectedSets.size === 0 ? `注意: セット未選択！` : `現在: 選択した ${selectedSets.size} セット`);
+            dialog.close();
+        }
+        applySettingsBtn.addEventListener('click', applySettings);
+
+
+        generateButton.addEventListener('click', fetchRandomCreature);
+        manaCostInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !generateButton.disabled) fetchRandomCreature(); });
+
+        function getImageUrl(cardData) {
+            if (cardData.image_uris && cardData.image_uris.normal) return cardData.image_uris.normal;
+            if (cardData.card_faces && cardData.card_faces[0].image_uris) return cardData.card_faces[0].image_uris.normal;
+            return null;
+        }
+
+        async function getLocalizedCard(baseCard, targetLang) {
+            if (targetLang !== 'ja') return baseCard; 
+            try {
+                if (baseCard.lang === 'ja') return baseCard;
+                const searchUrl = `https://api.scryfall.com/cards/search?q=oracle_id:${baseCard.oracle_id}+lang:ja&unique=prints&order=released&dir=asc`;
+                const resp = await fetch(searchUrl);
+                if (!resp.ok) return baseCard; 
+                const json = await resp.json();
+                if (json.data && json.data.length > 0) {
+                    const jaCard = json.data[0];
+                    if (getImageUrl(jaCard)) {
+                        return jaCard;
+                    }
+                }
+                return baseCard;
+            } catch (e) {
+                return baseCard; 
+            }
+        }
+
+        async function fetchUniqueCard(baseQueryParts, exclusionList) {
+            const MAX_RETRIES = 20; 
+            let attempts = 0;
+            
+            // Build the clean URL (without exclusions in the query string)
+            const query = encodeURIComponent(baseQueryParts.join(' '));
+            const apiUrl = `https://api.scryfall.com/cards/random?q=${query}`;
+
+            while (attempts < MAX_RETRIES) {
+                try {
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        // If it fails on the first try with a 404, the pool is empty.
+                        if (attempts === 0) throw new Error('Not Found');
+                        // Otherwise, maybe network blip, or rate limit. Wait and retry.
+                    } else {
+                        const cardData = await response.json();
+                        // Client-side uniqueness check
+                        const isDuplicate = exclusionList.some(existingName => existingName === cardData.name);
+                        
+                        if (!isDuplicate) {
+                            return cardData; // Found a good one!
+                        }
+                        // If duplicate, loop continues to retry
+                    }
+                } catch (e) {
+                    if (attempts === 0) throw e; 
+                }
+                attempts++;
+                await sleep(50); // Small delay to be nice to API
+            }
+            throw new Error('No unique card found after retries');
+        }
+
+        async function fetchRandomCreature() {
+            const cmc = manaCostInput.value;
+            const currentMode = modeSelect.value;
+            const colorLogic = colorLogicSelect.value; 
+            const targetLang = langSelect.value;
+            
+            if (cmc === '' || parseInt(cmc) < 0) return showMessage('0以上の数値を入力してください。');
+            if (selectedSets.size === 0) return showMessage('エラー: 設定でセットを1つ以上オンにしてください。');
+
+            generateButton.disabled = true;
+            messageDiv.style.display = 'none';
+            cardImage.style.display = 'none';
+            pickContainer.style.display = 'none';
+            pickContainer.innerHTML = '';
+            loadingSpinner.style.display = 'block';
+
+            let baseQueryParts = ['t:creature', `cmc=${cmc}`];
+            
+            const selectedColors = Array.from(colorCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            const colorChars = selectedColors.filter(c => c !== 'c'); 
+            const hasColorless = selectedColors.includes('c');
+
+            if (selectedColors.length > 0) {
+                if (colorLogic === 'or') {
+                    const orParts = selectedColors.map(c => `c:${c}`).join(' or ');
+                    baseQueryParts.push(`(${orParts})`);
+                } else {
+                    if (colorChars.length > 0) {
+                        const joinedColors = colorChars.join('');
+                        let subQuery = `c<=${joinedColors}`;
+                        if (!hasColorless) {
+                            subQuery += ` -c:c`;
+                        }
+                        baseQueryParts.push(`(${subQuery})`);
+                    } else if (hasColorless) {
+                        baseQueryParts.push(`c:c`);
+                    }
+                }
+            }
+
+            if (selectedSets.size < allSetsData.length) {
+                const setQueries = Array.from(selectedSets).map(code => `e:${code}`);
+                baseQueryParts.push(`(${setQueries.join(' or ')})`);
+            }
+
+            // Note: We DO NOT add historyCards to query parts here anymore to avoid URL length error.
+            // Exclusion is handled in fetchUniqueCard (client-side).
+
+            try {
+                if (currentMode === '3pick') {
+                    let pickDataList = [];
+                    let namesToExclude = []; // Exclude strictly for this roll to prevent duplicates within the 3 options
+                    
+                    // Note: Ideally 3pick usually doesn't exclude history (Cube style), but if user wants
+                    // Cube + 3pick behavior, we could pass historyCards too. 
+                    // Based on standard Momir/Hearthstone logic, duplicates across turns are usually okay in pick modes 
+                    // unless specified otherwise. However, to be safe and consistent with "Cube" mode selection:
+                    if (currentMode === 'cube') { 
+                        // If we ever merged modes, but currently radio buttons are exclusive.
+                        // So if mode is 3pick, it's just 3pick (duplicates allowed across turns).
+                    }
+                    // Current logic: 3pick mode does NOT check historyCards, only ensures the 3 cards shown are unique.
+
+                    for (let i = 0; i < 3; i++) {
+                        try {
+                            let cardData = await fetchUniqueCard(baseQueryParts, namesToExclude);
+                            cardData = await getLocalizedCard(cardData, targetLang);
+                            
+                            pickDataList.push(cardData);
+                            namesToExclude.push(cardData.name);
+                        } catch (e) {
+                            // If we can't find a unique card (pool exhausted), stop trying to find more.
+                            if (pickDataList.length === 0) throw e; 
+                            break;
+                        }
+                    }
+                    showPickOptions(pickDataList);
+
+                } else {
+                    // Normal or Cube Mode
+                    // Determine exclusion list
+                    let exclusionList = [];
+                    if (currentMode === 'cube') {
+                        exclusionList = historyCards.map(c => c.name);
+                    }
+
+                    let cardData = await fetchUniqueCard(baseQueryParts, exclusionList);
+                    cardData = await getLocalizedCard(cardData, targetLang);
+                    
+                    const imageUrl = getImageUrl(cardData);
+                    showSingleImage(imageUrl);
+                    addHistory(cardData.name, imageUrl, cardData.cmc, cardData.set.toUpperCase());
+                }
+
+            } catch (error) {
+                console.error(error);
+                showMessage(`条件に合うクリーチャーが見つかりません。条件が厳しすぎるか、プール内のカードをすべて引ききりました。`);
+            } finally {
+                loadingSpinner.style.display = 'none';
+                generateButton.disabled = false;
+                manaCostInput.focus();
+            }
+        }
+
+        function showSingleImage(imageUrl) {
+            if (!imageUrl) {
+                showMessage("画像が見つかりませんでした。");
+                return;
+            }
+            cardImage.src = imageUrl;
+            cardImage.onload = () => { cardImage.style.display = 'block'; };
+        }
+
+        function showPickOptions(dataList) {
+            messageDiv.textContent = 'この中から1枚選択してください';
+            messageDiv.style.display = 'block';
+            
+            dataList.forEach(cardData => {
+                const imgUrl = getImageUrl(cardData);
+                if (!imgUrl) return; 
+
+                const img = document.createElement('img');
+                img.className = 'pick-image';
+                img.src = imgUrl;
+                img.alt = cardData.name;
+                
+                img.addEventListener('click', () => {
+                    pickContainer.style.display = 'none';
+                    messageDiv.style.display = 'none';
+                    showSingleImage(imgUrl);
+                    addHistory(cardData.name, imgUrl, cardData.cmc, cardData.set.toUpperCase());
+                });
+                
+                pickContainer.appendChild(img);
+            });
+            
+            pickContainer.style.display = 'flex';
+        }
+
+        function addHistory(name, image, cmc, setCode) {
+            historyCards.unshift({ name, image, cmc, setCode });
+            updateHistoryUI();
+        }
+
+        function updateHistoryUI() {
+            if (historyCards.length === 0) return;
+            historyListDiv.innerHTML = '';
+            historyCards.forEach((card, index) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.dataset.img = card.image;
+                item.innerHTML = `
+                    <img src="${card.image}" alt="${card.name}">
+                    <div class="history-item-info">
+                        <strong>${card.name}</strong>
+                        マナ: ${card.cmc} / セット: ${card.setCode}
+                    </div>
+                `;
+                
+                item.addEventListener('mouseenter', () => {
+                    previewImage.src = card.image;
+                    previewOverlay.style.display = 'block';
+                });
+                item.addEventListener('mouseleave', () => {
+                    previewOverlay.style.display = 'none';
+                });
+                item.addEventListener('click', () => {
+                    previewImage.src = card.image;
+                    previewOverlay.style.display = (previewOverlay.style.display === 'block') ? 'none' : 'block';
+                });
+
+                historyListDiv.appendChild(item);
+            });
+        }
+
+        function showMessage(text) {
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            cardImage.style.display = 'none';
+            pickContainer.style.display = 'none';
+        }
+    });
+    </script>
+
+</body>
+</html>
