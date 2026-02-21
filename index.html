@@ -101,7 +101,7 @@
             filter: grayscale(1);
         }
         
-        .color-header {
+        .color-header, .rarity-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -120,13 +120,13 @@
 
         .options-section-title { margin: 20px 0 10px; font-weight: bold; color: var(--text-color); text-align: left; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px;}
 
-        .color-options { 
+        .color-options, .rarity-options { 
             background-color: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); 
             transition: background-color 0.4s ease;
         }
-        .color-checkboxes { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-        .color-checkboxes label { display: flex; align-items: center; cursor: pointer; color: var(--text-color); font-weight: 500;}
-        .color-checkboxes input { margin-right: 5px; }
+        .color-checkboxes, .rarity-checkboxes { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        .color-checkboxes label, .rarity-checkboxes label { display: flex; align-items: center; cursor: pointer; color: var(--text-color); font-weight: 500;}
+        .color-checkboxes input, .rarity-checkboxes input { margin-right: 5px; }
         
         #open-settings-btn { 
             background-color: var(--primary-color); 
@@ -278,7 +278,7 @@
                 <button id="open-settings-btn" disabled>読み込み中...</button>
                 <div id="current-scope">現在: 全セット（レガシー）</div>
 
-                <!-- Color Header with Logic Selection -->
+                <!-- Color Options -->
                 <div class="color-header">
                     <div class="options-title">色の絞り込み</div>
                     <div>
@@ -288,7 +288,6 @@
                         </select>
                     </div>
                 </div>
-
                 <div class="color-options">
                     <div class="color-checkboxes">
                         <label><input type="checkbox" name="color" value="w"> 白</label>
@@ -297,6 +296,19 @@
                         <label><input type="checkbox" name="color" value="r"> 赤</label>
                         <label><input type="checkbox" name="color" value="g"> 緑</label>
                         <label><input type="checkbox" name="color" value="c"> 無色</label>
+                    </div>
+                </div>
+
+                <!-- Rarity Options -->
+                <div class="rarity-header">
+                    <div class="options-title">レアリティの絞り込み (初版準拠)</div>
+                </div>
+                <div class="rarity-options">
+                    <div class="rarity-checkboxes">
+                        <label><input type="checkbox" name="rarity" value="c"> コモン</label>
+                        <label><input type="checkbox" name="rarity" value="u"> アンコモン</label>
+                        <label><input type="checkbox" name="rarity" value="r"> レア</label>
+                        <label><input type="checkbox" name="rarity" value="m"> 神話レア</label>
                     </div>
                 </div>
             </div>
@@ -551,6 +563,7 @@
         const modeSelect = document.getElementById('mode-select');
         const langSelect = document.getElementById('lang-select');
         const colorCheckboxes = document.querySelectorAll('input[name="color"]');
+        const rarityCheckboxes = document.querySelectorAll('input[name="rarity"]');
         
         const cardImage = document.getElementById('card-image');
         const pickContainer = document.getElementById('pick-container');
@@ -700,8 +713,6 @@
         async function fetchUniqueCard(baseQueryParts, exclusionList) {
             const MAX_RETRIES = 20; 
             let attempts = 0;
-            
-            // Build the clean URL (without exclusions in the query string)
             const query = encodeURIComponent(baseQueryParts.join(' '));
             const apiUrl = `https://api.scryfall.com/cards/random?q=${query}`;
 
@@ -709,24 +720,19 @@
                 try {
                     const response = await fetch(apiUrl);
                     if (!response.ok) {
-                        // If it fails on the first try with a 404, the pool is empty.
                         if (attempts === 0) throw new Error('Not Found');
-                        // Otherwise, maybe network blip, or rate limit. Wait and retry.
                     } else {
                         const cardData = await response.json();
-                        // Client-side uniqueness check
                         const isDuplicate = exclusionList.some(existingName => existingName === cardData.name);
-                        
                         if (!isDuplicate) {
-                            return cardData; // Found a good one!
+                            return cardData; 
                         }
-                        // If duplicate, loop continues to retry
                     }
                 } catch (e) {
                     if (attempts === 0) throw e; 
                 }
                 attempts++;
-                await sleep(50); // Small delay to be nice to API
+                await sleep(50);
             }
             throw new Error('No unique card found after retries');
         }
@@ -747,8 +753,13 @@
             pickContainer.innerHTML = '';
             loadingSpinner.style.display = 'block';
 
+            // --- Query Construction ---
             let baseQueryParts = ['t:creature', `cmc=${cmc}`];
             
+            // Exclude unwanted types (Battles, etc.)
+            baseQueryParts.push('-t:battle');
+
+            // Colors
             const selectedColors = Array.from(colorCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
             const colorChars = selectedColors.filter(c => c !== 'c'); 
             const hasColorless = selectedColors.includes('c');
@@ -771,29 +782,26 @@
                 }
             }
 
+            // Rarity
+            const selectedRarities = Array.from(rarityCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            if (selectedRarities.length > 0) {
+                const rarityQuery = selectedRarities.map(r => `r:${r}`).join(' or ');
+                // ★ 「一番初めに収録されたレアリティを参照する」ため is:firstprint を追加
+                baseQueryParts.push(`(${rarityQuery})`);
+                baseQueryParts.push(`is:firstprint`);
+            }
+
+            // Sets
             if (selectedSets.size < allSetsData.length) {
                 const setQueries = Array.from(selectedSets).map(code => `e:${code}`);
                 baseQueryParts.push(`(${setQueries.join(' or ')})`);
             }
 
-            // Note: We DO NOT add historyCards to query parts here anymore to avoid URL length error.
-            // Exclusion is handled in fetchUniqueCard (client-side).
-
             try {
                 if (currentMode === '3pick') {
                     let pickDataList = [];
-                    let namesToExclude = []; // Exclude strictly for this roll to prevent duplicates within the 3 options
+                    let namesToExclude = []; 
                     
-                    // Note: Ideally 3pick usually doesn't exclude history (Cube style), but if user wants
-                    // Cube + 3pick behavior, we could pass historyCards too. 
-                    // Based on standard Momir/Hearthstone logic, duplicates across turns are usually okay in pick modes 
-                    // unless specified otherwise. However, to be safe and consistent with "Cube" mode selection:
-                    if (currentMode === 'cube') { 
-                        // If we ever merged modes, but currently radio buttons are exclusive.
-                        // So if mode is 3pick, it's just 3pick (duplicates allowed across turns).
-                    }
-                    // Current logic: 3pick mode does NOT check historyCards, only ensures the 3 cards shown are unique.
-
                     for (let i = 0; i < 3; i++) {
                         try {
                             let cardData = await fetchUniqueCard(baseQueryParts, namesToExclude);
@@ -802,7 +810,6 @@
                             pickDataList.push(cardData);
                             namesToExclude.push(cardData.name);
                         } catch (e) {
-                            // If we can't find a unique card (pool exhausted), stop trying to find more.
                             if (pickDataList.length === 0) throw e; 
                             break;
                         }
@@ -810,8 +817,6 @@
                     showPickOptions(pickDataList);
 
                 } else {
-                    // Normal or Cube Mode
-                    // Determine exclusion list
                     let exclusionList = [];
                     if (currentMode === 'cube') {
                         exclusionList = historyCards.map(c => c.name);
